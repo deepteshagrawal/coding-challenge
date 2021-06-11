@@ -1,45 +1,83 @@
 package nz.co.westpac.accounting.services.impl;
 
+import nz.co.westpac.accounting.models.BookKeeping;
+import nz.co.westpac.accounting.models.Metrics;
+import nz.co.westpac.accounting.properties.AccountingMetricsProperties;
+import nz.co.westpac.accounting.services.AccountingMetricsInterface;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
 import java.io.File;
 import java.text.NumberFormat;
 import java.util.List;
 import java.util.Locale;
 
-import org.springframework.stereotype.Service;
-
-import com.fasterxml.jackson.databind.ObjectMapper;
-
-import nz.co.westpac.accounting.models.BookKeeping;
-import nz.co.westpac.accounting.models.Metrics;
-import nz.co.westpac.accounting.services.AccountingMetricsInterface;
-
 @Service
 public class AccountingMetricsService implements AccountingMetricsInterface
 {
+    @Autowired
+    private AccountingMetricsProperties properties;
 
     @Override
     public Metrics retrieveMetricsInformation() throws Exception
     {
         final Metrics metrics = new Metrics();
-
         final BookKeeping book = populateBook();
 
-        Locale locale = new Locale("en", "NZ");
-        NumberFormat currencyFormatter = NumberFormat.getCurrencyInstance(locale);
-        currencyFormatter.setMaximumFractionDigits(0);
-
-        metrics.setRevenue(currencyFormatter.format(calculateRevenue(book)));
-        metrics.setExpenses(currencyFormatter.format(calculateExpenses(book)));
-
-        NumberFormat percentFormatter = NumberFormat.getPercentInstance(locale);
-        percentFormatter.setMaximumFractionDigits(1);
-
-        metrics.setGrossProfitMargin(percentFormatter.format(calculateGrossProfitMargin(book)));
-        metrics.setNetProfitMargin(percentFormatter.format(calculateNetProfitMargin(book)));
-        metrics.setWorkingCapitalRatio(percentFormatter.format(calculateWorkingCapitalRatio(book)));
+        metrics.setRevenue(getCurrencyFormatter().format(calculateRevenue(book)));
+        metrics.setExpenses(getCurrencyFormatter().format(calculateExpenses(book)));
+        metrics.setGrossProfitMargin(getPercentFormatter().format(calculateGrossProfitMargin(book)));
+        metrics.setNetProfitMargin(getPercentFormatter().format(calculateNetProfitMargin(book)));
+        metrics.setWorkingCapitalRatio(getPercentFormatter().format(calculateWorkingCapitalRatio(book)));
 
         return metrics;
 
+    }
+
+    @Override
+    public Metrics retrieveSpecificMetricsInformation(final String fieldName) throws Exception
+    {
+        final Metrics metrics = new Metrics();
+        final BookKeeping book = populateBook();
+
+        switch (fieldName) {
+            case "revenue":
+                metrics.setRevenue(getCurrencyFormatter().format(calculateRevenue(book)));
+                break;
+            case "expenses":
+                metrics.setExpenses(getCurrencyFormatter().format(calculateExpenses(book)));
+                break;
+            case "grossProfitMargin":
+                metrics.setGrossProfitMargin(getPercentFormatter().format(calculateGrossProfitMargin(book)));
+                break;
+            case "netProfitMargin":
+                metrics.setNetProfitMargin(getPercentFormatter().format(calculateNetProfitMargin(book)));
+                break;
+            case "workingCapitalRatio":
+                metrics.setWorkingCapitalRatio(getPercentFormatter().format(calculateWorkingCapitalRatio(book)));
+                break;
+        }
+
+        return metrics;
+    }
+
+    private NumberFormat getCurrencyFormatter()
+    {
+        final Locale locale = new Locale(properties.getLocale().getLanguage(), properties.getLocale().getCountry());
+        final NumberFormat currencyFormatter = NumberFormat.getCurrencyInstance(locale);
+        currencyFormatter.setMaximumFractionDigits(properties.getCurrencyFormatter().getMaximumFractionDigits());
+        return currencyFormatter;
+    }
+
+    private NumberFormat getPercentFormatter()
+    {
+        final Locale locale = new Locale(properties.getLocale().getLanguage(), properties.getLocale().getCountry());
+        final NumberFormat percentFormatter = NumberFormat.getPercentInstance(locale);
+        percentFormatter.setMaximumFractionDigits(properties.getPercentFormatter().getMaximumFractionDigits());
+        return percentFormatter;
     }
 
     private BookKeeping populateBook() throws Exception
