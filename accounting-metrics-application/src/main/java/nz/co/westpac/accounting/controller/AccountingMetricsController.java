@@ -9,7 +9,10 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * Rest Controller to handle the accounting metrics application service requests.
+ * Rest Controller to handle the accounting metrics application service requests. Another and nice
+ * way to generate these mappings and response entities defined in swagger definition would be to
+ * use swagger codegen maven plugin. That way we can easily share our swagger definition with
+ * clients to use our application.
  */
 @RestController
 public class AccountingMetricsController
