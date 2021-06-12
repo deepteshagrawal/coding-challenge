@@ -3,10 +3,20 @@ package nz.co.westpac.accounting;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
-@SpringBootApplication
-public class AccountingMetricsApplication {
+/**
+ * Entry class for the accounting metrics application micro-service.
+ */
+@SpringBootApplication(scanBasePackageClasses = {AccountingMetricsApplication.class})
+public class AccountingMetricsApplication
+{
 
-	public static void main(String[] args) {
-		SpringApplication.run(AccountingMetricsApplication.class, args);
-	}
+    /**
+     * Entry point for the micro-service.
+     * 
+     * @param args is command line arguments.
+     */
+    public static void main(String[] args)
+    {
+        SpringApplication.run(AccountingMetricsApplication.class, args);
+    }
 }

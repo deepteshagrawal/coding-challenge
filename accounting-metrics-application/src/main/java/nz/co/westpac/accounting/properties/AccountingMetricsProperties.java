@@ -6,6 +6,9 @@ import org.springframework.stereotype.Component;
 import javax.validation.Valid;
 import javax.validation.constraints.NotNull;
 
+/**
+ * Configuration properties for the accounting metrics.
+ */
 @ConfigurationProperties("accounting.metrics")
 @Component
 public class AccountingMetricsProperties
@@ -31,6 +34,9 @@ public class AccountingMetricsProperties
         return locale;
     }
 
+    /**
+     * Configuration properties for the accounting metrics locale.
+     */
     @Valid
     public class Locale
     {
@@ -61,6 +67,9 @@ public class AccountingMetricsProperties
         }
     }
 
+    /**
+     * Configuration properties for the accounting metrics currency formatter.
+     */
     @Valid
     public class CurrencyFormatter
     {
@@ -79,6 +88,9 @@ public class AccountingMetricsProperties
 
     }
 
+    /**
+     * Configuration properties for the accounting metrics percent formatter.
+     */
     @Valid
     public class PercentFormatter
     {
