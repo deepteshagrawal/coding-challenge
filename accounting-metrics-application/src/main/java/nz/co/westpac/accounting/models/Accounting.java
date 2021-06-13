@@ -1,5 +1,7 @@
 package nz.co.westpac.accounting.models;
 
+import java.math.BigDecimal;
+
 /**
  * Model to hold Accounting Information from external data file. This class structure got generated
  * from external webtool.
@@ -16,7 +18,7 @@ public class Accounting
     public String account_type;
     public String account_type_bank;
     public String system_account;
-    public double total_value;
+    public BigDecimal total_value;
 
     public String getAccount_category()
     {
@@ -118,12 +120,12 @@ public class Accounting
         this.system_account = system_account;
     }
 
-    public double getTotal_value()
+    public BigDecimal getTotal_value()
     {
         return total_value;
     }
 
-    public void setTotal_value(double total_value)
+    public void setTotal_value(BigDecimal total_value)
     {
         this.total_value = total_value;
     }

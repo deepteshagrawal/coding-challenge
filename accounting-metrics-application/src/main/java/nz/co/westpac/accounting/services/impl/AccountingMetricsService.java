@@ -16,6 +16,8 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.io.File;
 import java.io.IOException;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.text.NumberFormat;
 import java.util.List;
 import java.util.Locale;
@@ -28,6 +30,9 @@ public class AccountingMetricsService implements AccountingMetricsInterface
 {
     @Autowired
     private AccountingMetricsProperties properties;
+
+    @Autowired
+    private ObjectMapper objectMapper;
 
     @Override
     public Metrics retrieveMetricsInformation()
@@ -110,7 +115,7 @@ public class AccountingMetricsService implements AccountingMetricsInterface
     {
         final File directory = new File("src/main/resources/data.json");
         try {
-            return new ObjectMapper().readValue(directory, BookKeeping.class);
+            return objectMapper.readValue(directory, BookKeeping.class);
         } catch (JsonParseException parseException) {
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Data file contains invalid content", parseException);
         } catch (JsonMappingException mappingException) {
@@ -127,10 +132,11 @@ public class AccountingMetricsService implements AccountingMetricsInterface
      * @param book to read all values based on above criteria.
      * @return revenue metrics information.
      */
-    private double calculateRevenue(final BookKeeping book)
+    private BigDecimal calculateRevenue(final BookKeeping book)
     {
-        return book.getData().stream().filter(account -> "revenue".equals(account.getAccount_category())).mapToDouble(account -> account.getTotal_value())
-            .sum();
+        return book.getData().stream().filter(account -> "revenue".equals(account.getAccount_category())).map(account -> account.getTotal_value())
+            .reduce((x, y) -> x.add(y)).orElse(new BigDecimal(0));
+
     }
 
     /**
@@ -140,10 +146,10 @@ public class AccountingMetricsService implements AccountingMetricsInterface
      * @param book to read all values based on above criteria.
      * @return expenses metrics information.
      */
-    private double calculateExpenses(final BookKeeping book)
+    private BigDecimal calculateExpenses(final BookKeeping book)
     {
-        return book.getData().stream().filter(account -> "expense".equals(account.getAccount_category())).mapToDouble(
-            account -> account.getTotal_value()).sum();
+        return book.getData().stream().filter(account -> "expense".equals(account.getAccount_category())).map(account -> account.getTotal_value())
+            .reduce((x, y) -> x.add(y)).orElse(new BigDecimal(0));
     }
 
     /**
@@ -154,13 +160,14 @@ public class AccountingMetricsService implements AccountingMetricsInterface
      * @param book to read all values based on above criteria.
      * @return gross profit margin metrics information.
      */
-    private double calculateGrossProfitMargin(final BookKeeping book)
+    private BigDecimal calculateGrossProfitMargin(final BookKeeping book)
     {
-        final double revenue = calculateRevenue(book);
-        final double grossProfit =
+        final BigDecimal revenue = calculateRevenue(book);
+        final BigDecimal grossProfit =
                 book.getData().stream().filter(account -> "sales".equals(account.getAccount_type()) && "debit".equals(account.getValue_type()))
-                    .mapToDouble(account -> account.getTotal_value()).sum();
-        return grossProfit / revenue;
+                    .map(account -> account.getTotal_value()).reduce((x, y) -> x.add(y)).orElse(new BigDecimal(0));
+
+        return grossProfit.divide(revenue, properties.getPercentFormatter().getMaximumFractionDigits(), RoundingMode.HALF_EVEN);
     }
 
     /**
@@ -170,12 +177,13 @@ public class AccountingMetricsService implements AccountingMetricsInterface
      * @param book to read all values based on above criteria.
      * @return net profit margin metrics information.
      */
-    private double calculateNetProfitMargin(final BookKeeping book)
+    private BigDecimal calculateNetProfitMargin(final BookKeeping book)
     {
-        final double revenue = calculateRevenue(book);
-        final double expenses = calculateExpenses(book);
-        final double netProfit = revenue - expenses;
-        return netProfit / revenue;
+        final BigDecimal revenue = calculateRevenue(book);
+        final BigDecimal expenses = calculateExpenses(book);
+        final BigDecimal netProfit = revenue.subtract(expenses);
+
+        return netProfit.divide(revenue, properties.getPercentFormatter().getMaximumFractionDigits(), RoundingMode.HALF_EVEN);
     }
 
     /**
@@ -188,20 +196,20 @@ public class AccountingMetricsService implements AccountingMetricsInterface
      * @param book to read all values based on above criteria.
      * @return total assets metrics information.
      */
-    private double calculateTotalAssets(final BookKeeping book)
+    private BigDecimal calculateTotalAssets(final BookKeeping book)
     {
         final List<String> accountTypes = List.of("current", "bank", "current_accounts_receivable");
-        final double totalDebitAssets =
+        final BigDecimal totalDebitAssets =
                 book.getData().stream()
                     .filter(account -> "assets".equals(account.getAccount_category()) && "debit".equals(account.getValue_type())
                             && accountTypes.contains(account.getAccount_type()))
-                    .mapToDouble(account -> account.getTotal_value()).sum();
-        final double totalCreditAssets =
+                    .map(account -> account.getTotal_value()).reduce((x, y) -> x.add(y)).orElse(new BigDecimal(0));
+        final BigDecimal totalCreditAssets =
                 book.getData().stream()
                     .filter(account -> "assets".equals(account.getAccount_category()) && "credit".equals(account.getValue_type())
                             && accountTypes.contains(account.getAccount_type()))
-                    .mapToDouble(account -> account.getTotal_value()).sum();
-        return totalDebitAssets - totalCreditAssets;
+                    .map(account -> account.getTotal_value()).reduce((x, y) -> x.add(y)).orElse(new BigDecimal(0));
+        return totalDebitAssets.subtract(totalCreditAssets);
     }
 
     /**
@@ -214,20 +222,20 @@ public class AccountingMetricsService implements AccountingMetricsInterface
      * @param book to read all values based on above criteria.
      * @return total liabilities metrics information.
      */
-    private double calculateTotalLiabilities(final BookKeeping book)
+    private BigDecimal calculateTotalLiabilities(final BookKeeping book)
     {
         final List<String> accountTypes = List.of("current", "current_accounts_payable");
-        final double totalCreditLiability =
+        final BigDecimal totalCreditLiability =
                 book.getData().stream()
                     .filter(account -> "liability".equals(account.getAccount_category()) && "credit".equals(account.getValue_type())
                             && accountTypes.contains(account.getAccount_type()))
-                    .mapToDouble(account -> account.getTotal_value()).sum();
-        final double totalDebitLiability =
+                    .map(account -> account.getTotal_value()).reduce((x, y) -> x.add(y)).orElse(new BigDecimal(0));
+        final BigDecimal totalDebitLiability =
                 book.getData().stream()
                     .filter(account -> "assets".equals(account.getAccount_category()) && "debit".equals(account.getValue_type())
                             && accountTypes.contains(account.getAccount_type()))
-                    .mapToDouble(account -> account.getTotal_value()).sum();
-        return totalCreditLiability - totalDebitLiability;
+                    .map(account -> account.getTotal_value()).reduce((x, y) -> x.add(y)).orElse(new BigDecimal(0));
+        return totalCreditLiability.subtract(totalDebitLiability);
     }
 
     /**
@@ -237,9 +245,12 @@ public class AccountingMetricsService implements AccountingMetricsInterface
      * @param book to read all values based on above criteria.
      * @return working capital ratio metrics information.
      */
-    private double calculateWorkingCapitalRatio(final BookKeeping book)
+    private BigDecimal calculateWorkingCapitalRatio(final BookKeeping book)
     {
-        return calculateTotalAssets(book) / calculateTotalLiabilities(book);
+        final BigDecimal totalAssets = calculateTotalAssets(book);
+        final BigDecimal totalLiabilities = calculateTotalLiabilities(book);
+
+        return totalAssets.divide(totalLiabilities, properties.getPercentFormatter().getMaximumFractionDigits(), RoundingMode.HALF_EVEN);
     }
 
 }
